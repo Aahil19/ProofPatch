@@ -9,7 +9,7 @@ with summary.open("a", encoding="utf-8") as stream:
     stream.write(
         "Download this job's evidence bundle from the **Artifacts** section of this run.\n\n"
     )
-    for name in ("ci-demo", "ci-escalation"):
+    for name in ("ci-demo", "ci-escalation", "ci-docker", "github-run"):
         report = Path("artifacts") / name / "report.md"
         if report.exists():
             # These filenames are relative to the downloaded artifact, not to a GitHub page.

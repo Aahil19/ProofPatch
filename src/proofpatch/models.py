@@ -54,7 +54,7 @@ class TestRun(StrictModel):
 
 
 class Incident(StrictModel):
-    schema_version: int = 1
+    schema_version: int = 2
     status: Literal["running", "verified", "escalated"] = "running"
     reason: str = ""
     provider: str
@@ -66,3 +66,5 @@ class Incident(StrictModel):
     usage: list[dict] = Field(default_factory=list)
     patch: str | None = None
     source_sha256: dict[str, str] = Field(default_factory=dict)
+    provenance: dict = Field(default_factory=dict)
+    execution: str = "trusted-local"

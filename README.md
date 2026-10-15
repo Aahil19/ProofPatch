@@ -4,19 +4,49 @@
 
 **AI that must show its work before calling a fix verified.**
 
-ProofPatch is a Week 1 prototype for repairing small Python repositories with failing
+ProofPatch is a Week 2 prototype for repairing small Python repositories with failing
 pytest tests. A LangGraph supervisor routes work through a reproducer, investigator,
 repair agent, and deterministic verifier. It produces a reviewable patch and evidence
 bundle while leaving the input repository untouched.
 
-> Status: Week 1 implementation. The bundled demo uses scripted agent responses and
+> Status: Week 2 implementation. The bundled demo uses scripted agent responses and
 > real pytest execution. It demonstrates the reliability pipeline, **not** an LLM repair
 > success rate. The OpenAI provider is implemented; live model quality requires a separate
-> credentialed run. Docker, MCP, GitHub failure ingestion, and a dashboard are later milestones.
+> credentialed run. GitHub Actions URL ingestion, a restricted MCP server, and Docker
+> execution are implemented. A dashboard, priced budget caps, and resumable approvals remain planned.
+
+## Paste a GitHub Actions run URL
+
+Open [Actions → Investigate GitHub failure](https://github.com/Aahil19/ProofPatch/actions/workflows/investigate.yml),
+choose **Run workflow**, and paste a completed failed run URL. Set the project's subdirectory
+(usually `.`), choose `openai`, and supply your model ID. Add `OPENAI_API_KEY` as a repository
+Actions secret first. The workflow builds the trusted runner image and uploads the decision,
+GitHub provenance, test evidence, tool audit, and proposed patch.
+
+For the bundled fixture, select `demo` and `examples/buggy_stats`; no API key is needed.
+[Seeded failure (intentional)](https://github.com/Aahil19/ProofPatch/actions/workflows/seeded-failure.yml)
+creates a real failed run and automatically triggers its investigation. That workflow is
+supposed to be red; the evidence checks should be green.
+
+From a machine with Docker running:
+
+```bash
+python -m pip install -c requirements.lock -e '.[dev]'
+docker build -t proofpatch-runner:0.2 docker
+# Set GITHUB_TOKEN with read access to Actions and repository contents when required.
+# Live mode also requires OPENAI_API_KEY.
+proofpatch https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  --provider openai --model YOUR_MODEL_ID --subdir .
+```
+
+URL investigations always use **MCP → Docker**. They download the recorded commit SHA,
+pin the workflow attempt, fetch failed-job logs, and require reproduced failures to match
+pytest failure IDs in those logs. There is no automatic fallback to host execution.
+See [Week 2 setup, tool contracts, and limitations](docs/week-2.md).
 
 ## Try it
 
-**Entirely on GitHub:** open [Actions → Week 1 evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml),
+**Entirely on GitHub:** open [Actions → Evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml),
 choose **Run workflow**, then open the run summary. Download the evidence artifact for
 any Python version to inspect the before/after logs and verified patch. Ordinary pushes
 and pull requests also run this demo automatically.
@@ -30,6 +60,13 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -c requirements.lock -e '.[dev]'
 proofpatch examples/buggy_stats --provider demo --trusted-local
+```
+
+To use the same fixture with real MCP transport and Docker locally:
+
+```bash
+docker build -t proofpatch-runner:0.2 docker
+proofpatch examples/buggy_stats --provider demo --execution docker
 ```
 
 The demo starts with **5 failed / 4 passed** tests across three seeded bugs. It reproduces
@@ -80,17 +117,19 @@ set the incident to `verified`; a model cannot set that status.
 
 The system follows a supervisor-and-specialists architecture: failure context enters the
 orchestrator, focused agents gather evidence and propose a patch, and verification gates
-the handoff to a human. This diagram shows the intended system; dashed connections mark
+the handoff to a human. Dashed connections mark
 planned capabilities.
 
 ```mermaid
 flowchart TD
-    CI["GitHub CI failure: logs, repository, commit SHA — planned"] -.-> S
-    CLI["Week 1 CLI: repository and selected tests"] --> S
+    CI["GitHub CI failure: logs, repository, commit SHA"] --> S
+    CLI["CLI: repository or Actions run URL"] --> S
     S["Supervisor: LangGraph orchestration"]
     S --> I["Investigator: locate the failure"]
     S --> R["Reproducer: rerun failing tests"]
     S --> P["Repair agent: propose a minimal patch"]
+    S --- M["Restricted MCP tools: logs, file reads, tests, diff"]
+    M --- D["Disposable Docker test containers"]
     I --> V
     R --> V
     P --> V
@@ -103,7 +142,7 @@ flowchart TD
     B["Priced cost caps and resumable approval gates — planned"] -.-> C
 ```
 
-The branches describe responsibilities, not concurrent execution. Week 1 runs
+The branches describe responsibilities, not concurrent execution. The graph runs
 **reproduce → investigate → repair → verify**, returning to the supervisor between steps.
 Reproduction comes first so model calls receive observed failures rather than an assumption.
 The supervisor, reproducer, and verifier are deterministic nodes. The investigator and
@@ -169,12 +208,20 @@ per-command timeout, kills its process group on timeout, and disables automatic 
 plugin loading. Projects requiring external pytest plugins, editable package installation,
 services, or special environment variables need further runner support.
 
+For URL ingestion and `--execution docker`, tests run in restricted disposable containers:
+no network, non-root user, read-only root/source/support mounts, dropped capabilities,
+no-new-privileges, and CPU/memory/PID/tmpfs limits. The Docker socket and API credentials
+are never mounted or passed into the test container. Container isolation is not a complete
+defense against hostile code or a compromised Docker host; use a disposable runner for
+untrusted repositories. The default image contains Python and pytest only; build a reviewed
+custom image with additional dependencies when necessary.
+
 The prototype caps live calls at 12, output tokens at 4,096 per call, repair attempts at 2,
 and model input context at 100 KB. API errors escalate immediately (SDK retries disabled).
 Token usage is recorded, but **the $0.50 budget cap is not yet implemented** and no dollar
 cost is inferred. Do not treat call limits as a spending guarantee.
 
-- Week 2: restricted Docker execution, MCP tools, GitHub Actions failure ingestion.
+- Week 2 implemented: restricted Docker execution, four MCP tools, GitHub Actions failure ingestion.
 - Week 3: priced budget reservations, transient retries, persistence/recovery, approval
   gates for PR creation, MLflow tracing, and broader failure injection.
 - Week 4: 30+ unseen seeded cases, single-agent baseline comparison, dashboard, demo video,

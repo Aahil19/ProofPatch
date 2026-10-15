@@ -1,0 +1,67 @@
+name: Investigate GitHub failure
+
+on:
+  workflow_run:
+    workflows: ['Seeded failure (intentional)']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_url:
+        description: URL of a completed failed GitHub Actions run
+        required: true
+        type: string
+      subdir:
+        description: Python project directory within the repository
+        default: '.'
+        type: string
+      provider:
+        description: Use demo only for the bundled buggy_stats fixture
+        default: openai
+        type: choice
+        options: [openai, demo]
+      model:
+        description: OpenAI model ID (required for openai; uses API credits)
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  investigate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted controller code, never the failed run's code
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -c requirements.lock -e .
+      - run: docker build -t proofpatch-runner:0.2 docker
+      - name: Ingest URL and investigate through MCP and Docker
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          RUN_URL: ${{ github.event.workflow_run.html_url || inputs.run_url }}
+          SUBDIR: ${{ github.event_name == 'workflow_run' && 'examples/buggy_stats' || inputs.subdir }}
+          PROVIDER: ${{ github.event_name == 'workflow_run' && 'demo' || inputs.provider }}
+          MODEL: ${{ inputs.model }}
+        run: proofpatch "$RUN_URL" --subdir "$SUBDIR" --provider "$PROVIDER" --model "$MODEL" --output artifacts/github-run
+      - name: Publish decision and evidence
+        if: always()
+        run: python scripts/github_summary.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofpatch-github-investigation
+          path: artifacts/
+          if-no-files-found: warn

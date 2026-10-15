@@ -5,7 +5,19 @@ a LangGraph supervisor, which coordinates investigator, reproducer, and repair s
 A separate verification stage decides whether to deliver a review-ready patch or escalate
 with evidence. Shared engineering controls apply across the workflow.
 
-## Component mapping
+## Week 2 integration
+
+The CLI now also accepts a GitHub Actions run URL. GitHub ingestion pins the run attempt
+and recorded commit SHA, fetches failed-job logs, and safely extracts a bounded archive.
+The supervisor uses an incident-scoped MCP session for `get_ci_logs`, `read_file`,
+`run_tests`, and `get_diff`. Each test run executes in a fresh restricted Docker container.
+Reproduced failures must match failure IDs in the supplied CI logs. See
+[Week 2](week-2.md) for the tool contracts, real integration checks, and isolation boundary.
+
+This implements the GitHub-input and restricted-tool extensions in the original design.
+Dollar cost caps, checkpoint recovery, and PR approval gates remain future work.
+
+## Week 1 baseline and extension points
 
 | Reference component | Week 1 implementation | Planned extension |
 | --- | --- | --- |
@@ -65,6 +77,8 @@ The shared-control layer is partly implemented. Call limits are not dollar cost 
 API token accounting is not budget enforcement. File-copy isolation is not a security
 sandbox; trusted code and proposed source execute with the runner's OS permissions.
 JSON artifacts persist evidence, but they do not yet provide resumable checkpoints.
+Week 2's URL path uses Docker; the local execution caveat above applies to the retained
+`--trusted-local` mode. Docker's controls and limitations are documented separately.
 
 These distinctions remain explicit in the [Week 1 acceptance checklist](week-1.md).
 The architecture guides later milestones without presenting those capabilities as already built.
