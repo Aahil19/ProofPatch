@@ -18,7 +18,7 @@ command = [
     "-m",
     "pytest",
     "-p",
-    "capture",
+    "pytest_capture",
     "-p",
     "no:cacheprovider",
     "-o",

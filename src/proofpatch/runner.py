@@ -38,7 +38,7 @@ class LocalRunner:
             "-m",
             "pytest",
             "-p",
-            "proofpatch.capture",
+            "proofpatch.pytest_capture",
             "-p",
             "no:cacheprovider",
             "-o",

@@ -1,4 +1,4 @@
-"""External pytest plugin. Stores exact node IDs and all execution phases."""
+"""External pytest plugin; name must not collide with pytest's builtin 'capture'."""
 
 import json
 import os
