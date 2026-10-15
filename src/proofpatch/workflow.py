@@ -101,6 +101,8 @@ class Workflow:
         if inventory(self.work) != self.original:
             raise ValueError("Tests mutated repository files during reproduction")
         self.baseline = baseline
+        # Protect discovered test modules too, including custom pytest naming conventions.
+        self.allowed.difference_update(test.split("::")[0] for test in baseline.collected)
         source = {
             name: data.decode("utf-8")
             for name, data in self.original.items()

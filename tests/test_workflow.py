@@ -131,3 +131,13 @@ def test_will_not_overwrite_existing_evidence(tmp_path):
     output.mkdir()
     with pytest.raises(FileExistsError):
         Workflow(FIXTURE, output, DemoProvider(), ["tests"]).run()
+
+
+def test_custom_named_test_module_is_protected(tmp_path):
+    target = repo(tmp_path)
+    (target / "tests" / "test_app.py").rename(target / "spec.py")
+    (target / "pytest.ini").write_text("[pytest]\npython_files = spec.py\n")
+    change = proposal("assert value(0) == 1", "spec.py", "assert value(0) == 0")
+    result = Workflow(target, tmp_path / "out", ScriptedProvider([change]), ["."]).run()
+    assert result.status == "escalated"
+    assert "Protected" in result.reason

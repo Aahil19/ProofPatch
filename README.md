@@ -1,5 +1,7 @@
 # ProofPatch
 
+[![Week 1 evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml)
+
 **AI that must show its work before calling a fix verified.**
 
 ProofPatch is a Week 1 prototype for repairing small Python repositories with failing
