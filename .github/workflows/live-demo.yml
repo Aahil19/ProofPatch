@@ -1,0 +1,42 @@
+name: Live model demo (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: OpenAI model ID supporting structured outputs (uses your API credits)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -c requirements.lock -e .
+      - name: Investigate and repair the bundled trusted fixture with a live model
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PROOFPATCH_MODEL: ${{ inputs.model }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "Add the OPENAI_API_KEY repository Actions secret before running this workflow."
+            exit 2
+          fi
+          proofpatch examples/buggy_stats --provider openai --model "$PROOFPATCH_MODEL" --trusted-local --output artifacts/live-demo
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofpatch-live-model-evidence
+          path: artifacts/
+          if-no-files-found: warn
+

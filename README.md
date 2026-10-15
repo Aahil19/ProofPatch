@@ -16,6 +16,13 @@ bundle while leaving the input repository untouched.
 
 ## Try it
 
+**Entirely on GitHub:** open [Actions → Week 1 evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml),
+choose **Run workflow**, then open the run summary. Download the evidence artifact for
+any Python version to inspect the before/after logs and verified patch. Ordinary pushes
+and pull requests also run this demo automatically.
+
+**Locally:**
+
 Python 3.11–3.13 on Linux or macOS:
 
 ```bash
@@ -39,6 +46,16 @@ Read `report.md`, inspect `verified.patch`, and open the stage logs and JSON evi
 The deliberately broken example stays broken so the demonstration can be repeated.
 
 ## Live investigation and repair
+
+To try a real model **on GitHub**, add `OPENAI_API_KEY` as a repository Actions secret
+under **Settings → Secrets and variables → Actions**. Then open
+[Actions → Live model demo (manual)](https://github.com/Aahil19/ProofPatch/actions/workflows/live-demo.yml),
+choose **Run workflow**, and enter your model ID. This uses your API credits, runs against
+the bundled fixture, and uploads its evidence even when the incident escalates. It never
+runs automatically and does not use the scripted demo provider. The dollar budget cap is
+not yet implemented. Never paste the key into an issue, source file, or workflow input.
+
+For a local live run:
 
 Install the target project's dependencies in the same environment first. Use an explicit
 model ID supported by your OpenAI account and structured outputs:
