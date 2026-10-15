@@ -78,23 +78,42 @@ set the incident to `verified`; a model cannot set that status.
 
 ## Architecture
 
+The system follows a supervisor-and-specialists architecture: failure context enters the
+orchestrator, focused agents gather evidence and propose a patch, and verification gates
+the handoff to a human. This diagram shows the intended system; dashed connections mark
+planned capabilities.
+
 ```mermaid
 flowchart TD
-    S[Supervisor: deterministic routing] --> R[Reproducer: baseline + repeat failures]
-    R --> S
-    S --> I[Investigator: evidence-based diagnosis]
-    I --> S
-    S --> P[Repair agent: minimal source edits]
-    P --> S
-    S --> V[Verifier: original failures + regression suite]
-    V --> S
-    S --> E[Verified patch or human escalation report]
+    CI["GitHub CI failure: logs, repository, commit SHA — planned"] -.-> S
+    CLI["Week 1 CLI: repository and selected tests"] --> S
+    S["Supervisor: LangGraph orchestration"]
+    S --> I["Investigator: locate the failure"]
+    S --> R["Reproducer: rerun failing tests"]
+    S --> P["Repair agent: propose a minimal patch"]
+    I --> V
+    R --> V
+    P --> V
+    V["Verification: tests, diff constraints, integrity checks"] --> G{"Evidence sufficient and checks pass?"}
+    G -->|Yes| H["Review-ready patch and evidence: human review"]
+    G -->|No: retry available| S
+    G -->|No: blocked or attempts exhausted| E["Escalate to human with failure evidence"]
+    H -.-> A["Explicit approval before PR creation or application — planned"]
+    C["Shared controls: limits, timeouts, protected files, audit trace"] --- S
+    B["Priced cost caps and resumable approval gates — planned"] -.-> C
 ```
 
+The branches describe responsibilities, not concurrent execution. Week 1 runs
+**reproduce → investigate → repair → verify**, returning to the supervisor between steps.
+Reproduction comes first so model calls receive observed failures rather than an assumption.
 The supervisor, reproducer, and verifier are deterministic nodes. The investigator and
-repair agent have distinct model roles. This intentionally avoids five redundant LLM calls.
+repair agent have distinct model roles.
 Unsuccessful verification can route back to repair, with concrete failure feedback and a
 fresh copy of the original source; at most two repair attempts are allowed.
+
+See [the architecture and implementation mapping](docs/architecture.md) for component
+boundaries, the human handoff, and planned extensions. Passing the gate means the selected
+checks passed; it is not a blanket declaration that a patch is safe.
 
 ## What “verified” means
 
