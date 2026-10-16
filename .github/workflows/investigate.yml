@@ -22,6 +22,15 @@ on:
       model:
         description: OpenAI model ID (required for openai; uses API credits)
         type: string
+      input_price_per_million:
+        description: USD per million input tokens for the selected model (required for openai)
+        type: string
+      output_price_per_million:
+        description: USD per million output tokens for the selected model (required for openai)
+        type: string
+      resume_from_run_id:
+        description: Optional previous investigation run ID with an interrupted checkpoint artifact
+        type: string
 
 permissions:
   contents: read
@@ -47,6 +56,13 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -c requirements.lock -e .
       - run: docker build -t proofpatch-runner:0.2 docker
+      - uses: actions/download-artifact@v8
+        if: github.event_name == 'workflow_dispatch' && inputs.resume_from_run_id != ''
+        with:
+          name: proofpatch-github-investigation
+          path: artifacts
+          run-id: ${{ inputs.resume_from_run_id }}
+          github-token: ${{ github.token }}
       - name: Ingest URL and investigate through MCP and Docker
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -55,7 +71,22 @@ jobs:
           SUBDIR: ${{ github.event_name == 'workflow_run' && 'examples/buggy_stats' || inputs.subdir }}
           PROVIDER: ${{ github.event_name == 'workflow_run' && 'demo' || inputs.provider }}
           MODEL: ${{ inputs.model }}
-        run: proofpatch "$RUN_URL" --subdir "$SUBDIR" --provider "$PROVIDER" --model "$MODEL" --output artifacts/github-run
+          INPUT_RATE: ${{ inputs.input_price_per_million }}
+          OUTPUT_RATE: ${{ inputs.output_price_per_million }}
+          RESUME_RUN_ID: ${{ inputs.resume_from_run_id }}
+        run: |
+          resume_args=()
+          if [ -n "$RESUME_RUN_ID" ]; then
+            resume_args=(--resume)
+          fi
+          if [ "$PROVIDER" = openai ]; then
+            proofpatch "$RUN_URL" --subdir "$SUBDIR" --provider openai --model "$MODEL" \
+              --input-price-per-million "$INPUT_RATE" --output-price-per-million "$OUTPUT_RATE" \
+              --output artifacts/github-run "${resume_args[@]}"
+          else
+            proofpatch "$RUN_URL" --subdir "$SUBDIR" --provider demo \
+              --output artifacts/github-run "${resume_args[@]}"
+          fi
       - name: Publish decision and evidence
         if: always()
         run: python scripts/github_summary.py

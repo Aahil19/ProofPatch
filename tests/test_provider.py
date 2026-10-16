@@ -19,7 +19,11 @@ class FakeResponses:
 def test_live_provider_contract_and_call_limit():
     responses = FakeResponses()
     provider = OpenAIProvider(
-        "configured-model", max_calls=1, client=SimpleNamespace(responses=responses)
+        "configured-model",
+        max_calls=1,
+        client=SimpleNamespace(responses=responses),
+        input_rate="1",
+        output_rate="1",
     )
     assert provider.investigate({}).summary == "cause"
     assert responses.kwargs["store"] is False
@@ -33,6 +37,11 @@ def test_refusal_escalates_to_caller():
     responses = SimpleNamespace(
         parse=lambda **kwargs: SimpleNamespace(status="completed", usage=None, output_parsed=None)
     )
-    provider = OpenAIProvider("configured-model", client=SimpleNamespace(responses=responses))
+    provider = OpenAIProvider(
+        "configured-model",
+        client=SimpleNamespace(responses=responses),
+        input_rate="1",
+        output_rate="1",
+    )
     with pytest.raises(ValueError, match="unstructured"):
         provider.investigate({})

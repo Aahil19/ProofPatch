@@ -9,6 +9,24 @@ from proofpatch.workflow import Workflow
 
 
 def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] in ("approve", "reject"):
+        from proofpatch.approval import decide
+
+        decision = argv[0]
+        gate = argparse.ArgumentParser(description=f"{decision} a reviewed verified patch")
+        gate.add_argument("output", type=Path)
+        gate.add_argument("--actor", required=True, help="Human reviewer identity")
+        gate.add_argument("--reason", default="", help="Required for rejection")
+        review = gate.parse_args(argv[1:])
+        try:
+            incident = decide(review.output, review.actor, decision == "approve", review.reason)
+        except (ValueError, OSError) as error:
+            print(f"ProofPatch approval error: {error}", file=sys.stderr)
+            return 2
+        print(f"ProofPatch approval — {incident.approval['status'].upper()}")
+        return 0
     parser = argparse.ArgumentParser(
         description="ProofPatch: reproduce, repair, and prove Python fixes"
     )
@@ -22,6 +40,12 @@ def main(argv=None) -> int:
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--max-attempts", type=int, choices=[1, 2], default=2)
     parser.add_argument("--max-calls", type=int, choices=range(1, 13), default=12)
+    parser.add_argument("--budget-usd", default="0.50", help="Maximum estimated live LLM USD")
+    parser.add_argument("--input-price-per-million", help="Operator supplied input token price")
+    parser.add_argument("--output-price-per-million", help="Operator supplied output token price")
+    parser.add_argument("--deadline", type=float, default=600, help="Active incident seconds")
+    parser.add_argument("--resume", action="store_true", help="Resume an interrupted checkpoint")
+    parser.add_argument("--no-mlflow", action="store_true", help="Disable local MLflow spans")
     parser.add_argument("--execution", choices=["local", "docker"], default=None)
     parser.add_argument(
         "--image", default="proofpatch-runner:0.2", help="Prebuilt trusted Docker runner image"
@@ -45,6 +69,8 @@ def main(argv=None) -> int:
         )
     if args.timeout <= 0 or args.timeout > 600:
         parser.error("--timeout must be greater than zero and at most 600 seconds")
+    if args.deadline <= 0 or args.deadline > 3600:
+        parser.error("--deadline must be greater than zero and at most 3600 seconds")
     for target in args.tests:
         path = Path(target.split("::")[0])
         if target.startswith("-") or path.is_absolute() or ".." in path.parts:
@@ -55,11 +81,23 @@ def main(argv=None) -> int:
     ]
     if args.provider == "openai" and not args.model:
         parser.error("Specify --model for live mode")
+    if args.provider == "openai" and (
+        args.input_price_per_million is None or args.output_price_per_million is None
+    ):
+        parser.error("Live mode requires both operator-supplied token prices for its budget")
+    if args.resume and args.output is None:
+        parser.error("--resume requires the original --output directory")
     try:
         provider = (
             DemoProvider()
             if args.provider == "demo"
-            else OpenAIProvider(args.model, args.max_calls)
+            else OpenAIProvider(
+                args.model,
+                args.max_calls,
+                budget_usd=args.budget_usd,
+                input_rate=args.input_price_per_million,
+                output_rate=args.output_price_per_million,
+            )
         )
         output = (args.output or Path("artifacts") / uuid4().hex[:12]).resolve()
         if is_url:
@@ -75,6 +113,9 @@ def main(argv=None) -> int:
                 args.timeout,
                 args.max_attempts,
                 token=os.environ.get("GITHUB_TOKEN"),
+                resume=args.resume,
+                deadline=args.deadline,
+                mlflow_enabled=not args.no_mlflow,
             )
         else:
             from proofpatch.mcp_client import MCPTools
@@ -92,7 +133,9 @@ def main(argv=None) -> int:
                 args.timeout,
                 args.max_attempts,
                 tool_factory=factory,
-            ).run()
+                deadline=args.deadline,
+                mlflow_enabled=not args.no_mlflow,
+            ).run(resume=args.resume)
     except (ValueError, OSError) as error:
         print(f"ProofPatch configuration error: {error}", file=sys.stderr)
         return 2

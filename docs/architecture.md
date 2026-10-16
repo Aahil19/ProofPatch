@@ -15,21 +15,31 @@ Reproduced failures must match failure IDs in the supplied CI logs. See
 [Week 2](week-2.md) for the tool contracts, real integration checks, and isolation boundary.
 
 This implements the GitHub-input and restricted-tool extensions in the original design.
-Dollar cost caps, checkpoint recovery, and PR approval gates remain future work.
+
+## Week 3 controls
+
+The supervisor now checkpoints application state after every graph node in SQLite and
+stores each model attempt before making the API call. An interrupted incident can resume
+from the same source, phase, price policy, and scope. Budget reservations block calls
+that would exceed the operator-priced cap; transient model and GitHub errors get bounded
+retries. A live decision includes local MLflow spans and JSON audit logs. Verification
+produces a patch pending human approval; the separate manual GitHub review workflow
+exports `approved.patch` only after a reviewer decision. See [Week 3](week-3.md) for
+controls, recovery semantics, and limitations.
 
 ## Week 1 baseline and extension points
 
-| Reference component | Week 1 implementation | Planned extension |
+| Reference component | Week 1 implementation | Subsequent implementation or remaining scope |
 | --- | --- | --- |
 | GitHub CI failure: logs, repo, commit SHA | CLI accepts a local repository and selected pytest targets; records input file hashes and newly collected failure logs | Week 2: ingest a GitHub Actions run URL, retrieve logs and commit SHA, and check out the exact failing revision |
-| Supervisor agent | `Workflow.supervisor` routes a LangGraph state graph and ends verified or escalated incidents | Resume persisted incidents and approval decisions |
+| Supervisor agent | `Workflow.supervisor` routes a LangGraph state graph and ends verified or escalated incidents | Week 3: durable SQLite checkpoint and validated resume |
 | Investigator | `OpenAIProvider.investigate` returns a structured diagnosis with suspect files and evidence | Retrieve focused context through restricted MCP tools |
 | Reproducer | `Workflow.reproduce` runs the baseline suite, then repeats the exact failing test IDs | Run against a pinned environment in disposable Docker containers |
 | Repair agent | `OpenAIProvider.repair` proposes exact-match edits; `apply_proposal` validates paths, matches, patch size, and syntax before writing the disposable copy | Broader repair strategies under the same protected-file policy |
 | Verification agent: tests, diff, risk checks | `Workflow.verify` reruns failures and the regression suite; checks test identities and workspace integrity. Diff constraints are enforced before verification | Additional risk checks and isolated execution; current checks are not a security analysis |
-| Review-ready patch / human approval | `verified.patch` and reports are produced for manual review; the original checkout is untouched | Explicit, resumable human approval before creating a PR or applying changes |
+| Review-ready patch / human approval | `verified.patch` and reports are produced for manual review; the original checkout is untouched | Week 3: explicit manual approval exports `approved.patch`; PR creation remains manual |
 | Escalate to human / failure evidence | Reports preserve the reason, attempted proposals, test logs, and trace; CLI exits nonzero | A GitHub-facing escalation and review workflow |
-| Global guardrails / cost caps / audit logging | Call and repair limits, context/output bounds, test timeouts, protected tests/configuration, per-node trace, per-run test commands/results, and returned API usage | Dollar-denominated budget reservations, transient retries, richer tool-call tracing, MLflow, and checkpoint recovery |
+| Global guardrails / cost caps / audit logging | Call and repair limits, context/output bounds, test timeouts, protected tests/configuration, per-node trace, per-run test commands/results, and returned API usage | Week 3: operator-priced budget reservations, retries, MCP/model audit, MLflow, and checkpoint recovery |
 
 Implementation lives in [`workflow.py`](../src/proofpatch/workflow.py),
 [`providers.py`](../src/proofpatch/providers.py),
@@ -65,20 +75,20 @@ The tests must fail before the change, pass after it, and preserve the selected 
 suite's test identities and passing outcomes. Protected files cannot be edited through the
 proposal interface.
 
-A verified artifact is ready for a human to inspect, not approved for production. Week 1
-has no automatic application, PR creation, or merge operation. A future GitHub workflow
-must retain this boundary and record approval before performing those actions. Escalation
+A verified artifact is ready for a human to inspect. Week 3's separate review workflow
+records an explicit decision before exporting an approved patch. There is still no
+automatic application, PR creation, or merge operation. Escalation
 currently means producing a human-readable report and a nonzero exit, not contacting a
 developer automatically.
 
 ## Controls and limitations
 
-The shared-control layer is partly implemented. Call limits are not dollar cost caps;
-API token accounting is not budget enforcement. File-copy isolation is not a security
-sandbox; trusted code and proposed source execute with the runner's OS permissions.
-JSON artifacts persist evidence, but they do not yet provide resumable checkpoints.
+The shared-control layer now includes operator-priced cost reservations and resumable
+SQLite checkpoints. Prices supplied by the operator can become stale, so estimated cost
+is not a provider invoice. File-copy isolation is not a security sandbox; trusted code
+and proposed source execute with the runner's OS permissions.
 Week 2's URL path uses Docker; the local execution caveat above applies to the retained
 `--trusted-local` mode. Docker's controls and limitations are documented separately.
 
-These distinctions remain explicit in the [Week 1 acceptance checklist](week-1.md).
-The architecture guides later milestones without presenting those capabilities as already built.
+The [Week 1 acceptance checklist](week-1.md) records the original local baseline;
+the newer boundaries are documented in [Week 2](week-2.md) and [Week 3](week-3.md).

@@ -70,3 +70,23 @@ jobs:
           name: proofpatch-docker-mcp-evidence
           path: artifacts/
           if-no-files-found: error
+
+  guardrail-injections:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -c requirements.lock -e .
+      - name: Inject budget, MCP outage, and deadline failures
+        run: python scripts/check_guardrails.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofpatch-guardrail-injections
+          path: artifacts/guardrail-injections/
+          if-no-files-found: error

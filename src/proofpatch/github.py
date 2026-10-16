@@ -3,6 +3,7 @@
 import io
 import re
 import stat
+import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -64,9 +65,10 @@ def extract_archive(data: bytes, destination: Path):
 
 
 class GitHub:
-    def __init__(self, token: str | None = None, client=None):
+    def __init__(self, token: str | None = None, client=None, sleep=time.sleep):
         self.token = token
         self.client = client or httpx.Client(timeout=30, follow_redirects=False)
+        self.sleep = sleep
 
     def close(self):
         self.client.close()
@@ -77,39 +79,51 @@ class GitHub:
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         for _ in range(3):
-            with self.client.stream("GET", url, headers=headers) as response:
-                if response.status_code in (301, 302, 307, 308):
-                    redirect = response.headers.get("location", "")
-                    parsed = urlparse(redirect)
-                    host = parsed.hostname or ""
-                    if (
-                        parsed.scheme != "https"
-                        or parsed.username
-                        or parsed.password
-                        or parsed.port not in (None, 443)
-                        or not (
-                            host in {"api.github.com", "codeload.github.com"}
-                            or host.endswith(
-                                (".blob.core.windows.net", ".actions.githubusercontent.com")
+            for retry in range(3):
+                try:
+                    with self.client.stream("GET", url, headers=headers) as response:
+                        status = response.status_code
+                        if status in (301, 302, 307, 308):
+                            redirect = response.headers.get("location", "")
+                            parsed = urlparse(redirect)
+                            host = parsed.hostname or ""
+                            if (
+                                parsed.scheme != "https"
+                                or parsed.username
+                                or parsed.password
+                                or parsed.port not in (None, 443)
+                                or not (
+                                    host in {"api.github.com", "codeload.github.com"}
+                                    or host.endswith(
+                                        (".blob.core.windows.net", ".actions.githubusercontent.com")
+                                    )
+                                )
+                            ):
+                                raise ValueError("GitHub returned an unsupported download redirect")
+                            url = redirect
+                            # Signed archive/log downloads never receive the API credential.
+                            headers = {}
+                            break
+                        if status != 200:
+                            if status in (429, 500, 502, 503, 504) and retry < 2:
+                                self.sleep(2**retry)
+                                continue
+                            raise ValueError(
+                                f"GitHub HTTP {status} for {path}; check read access, rate limits, and log retention"
                             )
-                        )
-                    ):
-                        raise ValueError("GitHub returned an unsupported download redirect")
-                    url = redirect
-                    # Signed archive/log downloads never receive the API credential.
-                    headers = {}
-                    continue
-                if response.status_code != 200:
-                    raise ValueError(
-                        f"GitHub HTTP {response.status_code} for {path}; check read access, rate limits, and log retention"
-                    )
-                chunks, size = [], 0
-                for chunk in response.iter_bytes():
-                    size += len(chunk)
-                    if size > limit:
-                        raise ValueError("GitHub response exceeds configured size limit")
-                    chunks.append(chunk)
-                return b"".join(chunks)
+                        chunks, size = [], 0
+                        for chunk in response.iter_bytes():
+                            size += len(chunk)
+                            if size > limit:
+                                raise ValueError("GitHub response exceeds configured size limit")
+                            chunks.append(chunk)
+                        return b"".join(chunks)
+                except httpx.TransportError:
+                    if retry == 2:
+                        raise ValueError("GitHub request failed after three attempts") from None
+                    self.sleep(2**retry)
+            else:
+                raise ValueError("GitHub request failed after three attempts")
         raise ValueError("Too many GitHub redirects")
 
     def json(self, path):

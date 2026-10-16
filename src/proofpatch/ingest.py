@@ -20,10 +20,13 @@ def investigate_run(
     max_attempts=2,
     token=None,
     github=None,
+    resume=False,
+    deadline=600,
+    mlflow_enabled=False,
 ):
     run = RunURL.parse(url)
     relative_path(subdir)
-    if output.exists():
+    if output.exists() and not resume:
         raise FileExistsError("Output directory already exists")
     api = github or GitHub(token)
     context = {}
@@ -48,8 +51,12 @@ def investigate_run(
                 max_attempts,
                 tool_factory=factory,
                 ci_context=context,
-            ).run()
-    except Exception as error:  # noqa: BLE001 - ingestion failures need a human-readable report
+                deadline=deadline,
+                mlflow_enabled=mlflow_enabled,
+            ).run(resume=resume)
+    except Exception as error:
+        if resume:
+            raise
         output.mkdir(parents=True, exist_ok=True)
         incident = Incident(
             provider=provider.name,

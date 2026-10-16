@@ -1,0 +1,63 @@
+name: Review a verified patch (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      investigation_run_id:
+        description: Successful ProofPatch investigation run ID containing the evidence artifact
+        required: true
+        type: string
+      decision:
+        description: Human decision after inspecting verified.patch and the test evidence
+        required: true
+        type: choice
+        options: [approve, reject]
+      reason:
+        description: Required for rejection
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -c requirements.lock -e .
+      - uses: actions/download-artifact@v8
+        with:
+          name: proofpatch-github-investigation
+          path: reviewed
+          run-id: ${{ inputs.investigation_run_id }}
+          github-token: ${{ github.token }}
+      - name: Record authenticated reviewer decision
+        env:
+          DECISION: ${{ inputs.decision }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          if [ "$DECISION" = approve ]; then
+            proofpatch approve reviewed/github-run --actor "$GITHUB_ACTOR"
+          else
+            proofpatch reject reviewed/github-run --actor "$GITHUB_ACTOR" --reason "$REASON"
+          fi
+      - name: Publish review record
+        if: always()
+        run: |
+          if [ -f reviewed/github-run/report.json ]; then
+            python -c 'import json,pathlib; i=json.loads(pathlib.Path("reviewed/github-run/report.json").read_text()); print("## Patch review\n\nDecision: **" + i["approval"]["status"] + "** by " + i["approval"].get("actor", "unknown"))' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofpatch-review-${{ inputs.investigation_run_id }}
+          path: reviewed/github-run/
+          if-no-files-found: warn

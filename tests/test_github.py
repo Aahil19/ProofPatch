@@ -91,10 +91,24 @@ def test_untrusted_redirect_rejected():
 @pytest.mark.parametrize("status", [403, 404, 410, 429])
 def test_api_failure_is_explicit(status):
     api = GitHub(
-        client=httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status)))
+        client=httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status))),
+        sleep=lambda _: None,
     )
     with pytest.raises(ValueError, match=str(status)):
         api.download("/test")
+
+
+def test_transient_github_failure_retries_with_bounded_backoff():
+    seen, delays = [], []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(503 if len(seen) < 3 else 200, content=b"ok")
+
+    api = GitHub(client=httpx.Client(transport=httpx.MockTransport(handler)), sleep=delays.append)
+    assert api.download("/test") == b"ok"
+    assert len(seen) == 3
+    assert delays == [1, 2]
 
 
 def test_failed_job_pagination_attempt_and_exact_commit(tmp_path):

@@ -4,22 +4,41 @@
 
 **AI that must show its work before calling a fix verified.**
 
-ProofPatch is a Week 2 prototype for repairing small Python repositories with failing
+ProofPatch is a Week 3 prototype for repairing small Python repositories with failing
 pytest tests. A LangGraph supervisor routes work through a reproducer, investigator,
 repair agent, and deterministic verifier. It produces a reviewable patch and evidence
 bundle while leaving the input repository untouched.
 
-> Status: Week 2 implementation. The bundled demo uses scripted agent responses and
+> Status: Week 3 implementation. The bundled demo uses scripted agent responses and
 > real pytest execution. It demonstrates the reliability pipeline, **not** an LLM repair
 > success rate. The OpenAI provider is implemented; live model quality requires a separate
 > credentialed run. GitHub Actions URL ingestion, a restricted MCP server, and Docker
-> execution are implemented. A dashboard, priced budget caps, and resumable approvals remain planned.
+> execution, priced budget caps, checkpoint recovery, human review gates, and MLflow
+> tracing are implemented. A dashboard and benchmark remain planned.
+
+## Guardrails and review
+
+Live runs require the selected model's input/output USD rates per million tokens and
+default to a **$0.50 estimated cost cap**. Model calls reserve their allowed output
+before execution; failed or interrupted calls still consume a reservation. Two transient
+retries, a 12-call ceiling, a 600-second active deadline, and evidence checks stop unsafe
+or uncertain runs. A SQLite checkpoint can resume an interrupted incident without
+repeating completed graph stages. Each CLI run writes JSON audit logs and MLflow agent
+spans. [Week 3 controls and recovery details](docs/week-3.md).
+
+A verified patch remains pending human review. After inspecting `verified.patch` and the
+test report, use [Review a verified patch (manual)](https://github.com/Aahil19/ProofPatch/actions/workflows/review-patch.yml)
+with the successful investigation run ID. The review artifact records the GitHub actor
+and creates `approved.patch` only on approval. Local operators can run
+`proofpatch approve OUTPUT --actor NAME` or
+`proofpatch reject OUTPUT --actor NAME --reason TEXT`.
 
 ## Paste a GitHub Actions run URL
 
 Open [Actions → Investigate GitHub failure](https://github.com/Aahil19/ProofPatch/actions/workflows/investigate.yml),
 choose **Run workflow**, and paste a completed failed run URL. Set the project's subdirectory
-(usually `.`), choose `openai`, and supply your model ID. Add `OPENAI_API_KEY` as a repository
+(usually `.`), choose `openai`, and supply your model ID and current input/output token
+prices. Add `OPENAI_API_KEY` as a repository
 Actions secret first. The workflow builds the trusted runner image and uploads the decision,
 GitHub provenance, test evidence, tool audit, and proposed patch.
 
@@ -41,7 +60,8 @@ docker build -t proofpatch-runner:0.2 docker
 # Set GITHUB_TOKEN with read access to Actions and repository contents when required.
 # Live mode also requires OPENAI_API_KEY.
 proofpatch https://github.com/OWNER/REPO/actions/runs/RUN_ID \
-  --provider openai --model YOUR_MODEL_ID --subdir .
+  --provider openai --model YOUR_MODEL_ID \
+  --input-price-per-million INPUT_USD --output-price-per-million OUTPUT_USD --subdir .
 ```
 
 URL investigations always use **MCP → Docker**. They download the recorded commit SHA,
@@ -92,10 +112,10 @@ The deliberately broken example stays broken so the demonstration can be repeate
 To try a real model **on GitHub**, add `OPENAI_API_KEY` as a repository Actions secret
 under **Settings → Secrets and variables → Actions**. Then open
 [Actions → Live model demo (manual)](https://github.com/Aahil19/ProofPatch/actions/workflows/live-demo.yml),
-choose **Run workflow**, and enter your model ID. This uses your API credits, runs against
+choose **Run workflow**, and enter your model ID and token prices. This uses your API credits, runs against
 the bundled fixture, and uploads its evidence even when the incident escalates. It never
-runs automatically and does not use the scripted demo provider. The dollar budget cap is
-not yet implemented. Never paste the key into an issue, source file, or workflow input.
+runs automatically and does not use the scripted demo provider. The default
+operator-priced budget cap is $0.50. Never paste the key into an issue, source file, or workflow input.
 
 For a local live run:
 
@@ -106,6 +126,7 @@ model ID supported by your OpenAI account and structured outputs:
 export OPENAI_API_KEY='your-key'  # Prefer your secret manager; never commit a key.
 proofpatch /path/to/trusted/python-project \
   --provider openai --model YOUR_MODEL_ID \
+  --input-price-per-million INPUT_USD --output-price-per-million OUTPUT_USD \
   --tests tests --trusted-local --output /path/outside/project/incident-001
 ```
 
@@ -122,8 +143,7 @@ set the incident to `verified`; a model cannot set that status.
 
 The system follows a supervisor-and-specialists architecture: failure context enters the
 orchestrator, focused agents gather evidence and propose a patch, and verification gates
-the handoff to a human. Dashed connections mark
-planned capabilities.
+the handoff to a human. Shared controls apply to each step.
 
 ```mermaid
 flowchart TD
@@ -142,9 +162,8 @@ flowchart TD
     G -->|Yes| H["Review-ready patch and evidence: human review"]
     G -->|No: retry available| S
     G -->|No: blocked or attempts exhausted| E["Escalate to human with failure evidence"]
-    H -.-> A["Explicit approval before PR creation or application — planned"]
-    C["Shared controls: limits, timeouts, protected files, audit trace"] --- S
-    B["Priced cost caps and resumable approval gates — planned"] -.-> C
+    H --> A["Human review gate: approved patch artifact"]
+    C["Shared controls: cost, retries, deadlines, checkpoints, audit, MLflow"] --- S
 ```
 
 The branches describe responsibilities, not concurrent execution. The graph runs
@@ -156,7 +175,7 @@ Unsuccessful verification can route back to repair, with concrete failure feedba
 fresh copy of the original source; at most two repair attempts are allowed.
 
 See [the architecture and implementation mapping](docs/architecture.md) for component
-boundaries, the human handoff, and planned extensions. Passing the gate means the selected
+boundaries and the human handoff. Passing the gate means the selected
 checks passed; it is not a blanket declaration that a patch is safe.
 
 ## What “verified” means
@@ -181,12 +200,16 @@ selected tests and environment; it is not a proof of general correctness.
 | --- | --- |
 | `report.md` / `report.json` | Decision, reason, diagnosis, test identities, source hashes, usage |
 | `trace.jsonl` | Every agent transition, timestamp, duration, and error |
+| `llm-calls.jsonl` / `checkpoints.sqlite` | Model attempt costs and durable restart state |
+| `mcp-tools.jsonl` / `mlruns/` | Tool audit and MLflow agent spans |
 | `baseline.*` / `reproduction.*` | Before-patch test outcomes and logs |
 | `proposal-N.json` / `attempt-N.patch` | Rationale, exact edits, proposed diff for every attempt |
 | `attempt-N-focused.*` / `attempt-N-regression.*` | After-patch outcomes and logs |
 | `verified.patch` | Created only after all verification gates pass |
+| `approved.patch` / `approval-events.jsonl` | Created only after explicit approval / reviewer decision log |
 
-Existing evidence directories are never overwritten. Exit codes: `0` verified, `1`
+Existing evidence directories are never overwritten except through validated `--resume`.
+Exit codes: `0` verified, `1`
 escalated, `2` invalid CLI/configuration. Proposed patches are never automatically applied
 to your original checkout, committed, pushed, or submitted as pull requests.
 
@@ -198,6 +221,7 @@ ruff format --check .
 pytest -q
 python scripts/check_demo.py --output artifacts/ci-demo
 python scripts/check_escalation.py --output artifacts/ci-escalation
+python scripts/check_guardrails.py
 ```
 
 GitHub Actions runs these checks on Python 3.11, 3.12, and 3.13, then uploads the actual
@@ -222,13 +246,13 @@ untrusted repositories. The default image contains Python and pytest only; build
 custom image with additional dependencies when necessary.
 
 The prototype caps live calls at 12, output tokens at 4,096 per call, repair attempts at 2,
-and model input context at 100 KB. API errors escalate immediately (SDK retries disabled).
-Token usage is recorded, but **the $0.50 budget cap is not yet implemented** and no dollar
-cost is inferred. Do not treat call limits as a spending guarantee.
+model input context at 100 KB, and operator-priced estimated cost at $0.50 by default.
+Transient failures have at most two application retries; the OpenAI SDK's own retries are
+disabled. The budget estimate depends on the supplied rates and returned token usage.
 
 - Week 2 implemented: restricted Docker execution, four MCP tools, GitHub Actions failure ingestion.
-- Week 3: priced budget reservations, transient retries, persistence/recovery, approval
-  gates for PR creation, MLflow tracing, and broader failure injection.
+- Week 3 implemented: priced budget reservations, transient retries, checkpoint recovery,
+  patch artifact approval, MLflow tracing, and failure injection. PR creation is still manual.
 - Week 4: 30+ unseen seeded cases, single-agent baseline comparison, dashboard, demo video,
   and an honest evaluation report. No 70% repair-rate claim is made today.
 

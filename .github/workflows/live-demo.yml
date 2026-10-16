@@ -7,6 +7,14 @@ on:
         description: OpenAI model ID supporting structured outputs (uses your API credits)
         required: true
         type: string
+      input_price_per_million:
+        description: USD per million input tokens for the selected model
+        required: true
+        type: string
+      output_price_per_million:
+        description: USD per million output tokens for the selected model
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -27,16 +35,19 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PROOFPATCH_MODEL: ${{ inputs.model }}
+          INPUT_RATE: ${{ inputs.input_price_per_million }}
+          OUTPUT_RATE: ${{ inputs.output_price_per_million }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "Add the OPENAI_API_KEY repository Actions secret before running this workflow."
             exit 2
           fi
-          proofpatch examples/buggy_stats --provider openai --model "$PROOFPATCH_MODEL" --trusted-local --output artifacts/live-demo
+          proofpatch examples/buggy_stats --provider openai --model "$PROOFPATCH_MODEL" \
+            --input-price-per-million "$INPUT_RATE" --output-price-per-million "$OUTPUT_RATE" \
+            --trusted-local --output artifacts/live-demo
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: proofpatch-live-model-evidence
           path: artifacts/
           if-no-files-found: warn
-
