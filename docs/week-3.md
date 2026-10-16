@@ -72,6 +72,18 @@ timeouts, malformed responses, excessive token usage, interrupted repair and
 verification, changed source on resume, and tampered patches. GitHub **Evidence checks**
 uploads these reports and runs real Docker/MCP checks without a live model key.
 
+### Recorded GitHub evidence
+
+[Evidence checks for Week 3](https://github.com/Aahil19/ProofPatch/actions/runs/38831670262)
+passed all five jobs: Python 3.11, 3.12, and 3.13 (91 passed and 3 Docker-only tests
+skipped in the standard matrix), real Docker/MCP integration (3 passed), and the
+failure-injection job. The [guarded URL investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38831728400)
+consumed the [seeded failed run](https://github.com/Aahil19/ProofPatch/actions/runs/38661748932).
+Its baseline and reproduction found five failures; focused verification passed all
+five, and the nine-test regression suite passed. The GitHub summary shows **human
+approval pending**. The investigation used scripted repair responses and real GitHub,
+MCP, and Docker execution, so these figures do not measure live model success.
+
 ```bash
 proofpatch https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   --provider openai --model MODEL_ID \

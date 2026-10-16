@@ -43,6 +43,10 @@ Actions secret first. The workflow builds the trusted runner image and uploads t
 GitHub provenance, test evidence, tool audit, and proposed patch.
 
 For the bundled fixture, select `demo` and `examples/buggy_stats`; no API key is needed.
+[Week 3's guarded investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38831728400)
+shows the verified result with human approval pending, and its
+[five-job CI run](https://github.com/Aahil19/ProofPatch/actions/runs/38831670262)
+includes real Docker/MCP and guardrail-injection checks.
 [See a completed URL investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38663779004):
 five reproduced failures became five passing focused tests, with all nine regression tests
 passing in Docker through MCP. [The original failed run](https://github.com/Aahil19/ProofPatch/actions/runs/38661748932)
