@@ -1,6 +1,6 @@
 # ProofPatch
 
-[![Week 1 evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml)
+[![Evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml)
 
 **AI that must show its work before calling a fix verified.**
 
@@ -24,6 +24,11 @@ Actions secret first. The workflow builds the trusted runner image and uploads t
 GitHub provenance, test evidence, tool audit, and proposed patch.
 
 For the bundled fixture, select `demo` and `examples/buggy_stats`; no API key is needed.
+[See a completed URL investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38663779004):
+five reproduced failures became five passing focused tests, with all nine regression tests
+passing in Docker through MCP. [The original failed run](https://github.com/Aahil19/ProofPatch/actions/runs/38661748932)
+is available to paste into the workflow and repeat the demonstration.
+
 [Seeded failure (intentional)](https://github.com/Aahil19/ProofPatch/actions/workflows/seeded-failure.yml)
 creates a real failed run and automatically triggers its investigation. That workflow is
 supposed to be red; the evidence checks should be green.

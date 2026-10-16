@@ -98,6 +98,31 @@ Docker assumptions; it cannot guarantee correctness of evidence emitted by malic
 
 ## Validation
 
+### Recorded GitHub evidence
+
+Controller revision `e6b4aa22c1c141258ac98d13f11d4f6245d606df` was validated by
+[Evidence checks](https://github.com/Aahil19/ProofPatch/actions/runs/38663516554):
+the Python 3.11, 3.12, and 3.13 jobs and the real Docker/MCP job all passed.
+
+The [manual URL investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38663779004)
+consumed [this failed run](https://github.com/Aahil19/ProofPatch/actions/runs/38661748932)
+at source revision `4d1fa0ed7a0a187028cc13e2881ea6570ad23c23`, with
+`subdir=examples/buggy_stats` and `provider=demo`. It completed in 42 seconds including
+environment setup, using one repair attempt:
+
+| Stage | Passed | Failed |
+| --- | ---: | ---: |
+| Baseline | 4 | 5 |
+| Reproduction | 0 | 5 |
+| Focused verification | 5 | 0 |
+| Regression verification | 9 | 0 |
+
+The run uploads `proofpatch-github-investigation`, containing the proposed patch, GitHub
+provenance, test evidence, and MCP audit. These results establish the integration path;
+the repair responses were scripted and do not measure live model performance.
+
+### Automated coverage
+
 - The normal matrix runs parsing, GitHub API mock tests, archive/path restrictions, real MCP
   handshake/read/diff tests, and the existing evidence-gate tests on Python 3.11–3.13.
 - A separate Docker job executes real MCP-to-container repair, verifies non-root/no-network/
