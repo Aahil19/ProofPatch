@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="ProofPatch evidence-driven repair benchmark dashboard" />
+    <title>ProofPatch · Evaluation dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="ProofPatch dashboard home">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span>ProofPatch</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#results">Results</a>
+        <a href="#cases">Cases</a>
+        <a href="#method">Method</a>
+        <a class="github-link" href="https://github.com/Aahil19/ProofPatch">View source ↗</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero shell">
+        <div class="eyebrow"><span class="pulse"></span> Reproducible reliability benchmark</div>
+        <h1>A repair only counts when<br /><span>the evidence closes the loop.</span></h1>
+        <p class="hero-copy">
+          Thirty seeded Python failures. Real pytest runs before and after every candidate.
+          One supervisor policy, one single-attempt baseline, and zero self-reported fixes.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#cases">Explore all cases</a>
+          <button class="button secondary" id="play-demo" type="button">Play evidence trace</button>
+        </div>
+      </section>
+
+      <section class="metrics shell" aria-label="Benchmark headline metrics">
+        <article class="metric featured">
+          <span class="metric-label">Supervisor verified</span>
+          <strong id="metric-supervisor">—</strong>
+          <span id="metric-delta">Loading results…</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Seeded failures</span>
+          <strong id="metric-cases">—</strong>
+          <span>Across three small repositories</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Evidence coverage</span>
+          <strong id="metric-coverage">—</strong>
+          <span>Reproduction and agent trace</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">False verified</span>
+          <strong id="metric-false">—</strong>
+          <span>Claims without passing evidence</span>
+        </article>
+      </section>
+
+      <section class="section shell" id="results">
+        <div class="section-heading">
+          <div>
+            <span class="kicker">Measured comparison</span>
+            <h2>Verification feedback changes the outcome.</h2>
+          </div>
+          <p>Both systems receive the same first repair candidate. The supervisor can use failed verification evidence for one bounded retry.</p>
+        </div>
+        <div class="comparison-grid">
+          <article class="comparison-card supervisor-card">
+            <div class="card-topline"><span>ProofPatch supervisor</span><span class="status-chip teal">Evidence gated</span></div>
+            <div class="rate-row"><strong id="supervisor-rate">—</strong><span>verified repair rate</span></div>
+            <div class="bar-track"><div class="bar supervisor-bar" id="supervisor-bar"></div></div>
+            <dl>
+              <div><dt>Verified</dt><dd id="supervisor-verified">—</dd></div>
+              <div><dt>Escalated</dt><dd id="supervisor-escalated">—</dd></div>
+              <div><dt>Median</dt><dd id="supervisor-latency">—</dd></div>
+            </dl>
+          </article>
+          <article class="comparison-card">
+            <div class="card-topline"><span>Single-attempt baseline</span><span class="status-chip">No retry</span></div>
+            <div class="rate-row"><strong id="baseline-rate">—</strong><span>verified repair rate</span></div>
+            <div class="bar-track"><div class="bar baseline-bar" id="baseline-bar"></div></div>
+            <dl>
+              <div><dt>Verified</dt><dd id="baseline-verified">—</dd></div>
+              <div><dt>Escalated</dt><dd id="baseline-escalated">—</dd></div>
+              <div><dt>Median</dt><dd id="baseline-latency">—</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section class="section shell" id="cases">
+        <div class="section-heading compact">
+          <div>
+            <span class="kicker">Evidence explorer</span>
+            <h2>Inspect every seeded incident.</h2>
+          </div>
+          <div class="filters" aria-label="Filter benchmark cases">
+            <label>Project<select id="project-filter"><option value="all">All projects</option></select></label>
+            <label>Outcome<select id="outcome-filter"><option value="all">All outcomes</option><option value="verified">Verified</option><option value="escalated">Escalated</option></select></label>
+          </div>
+        </div>
+        <div class="case-layout">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Incident</th><th>Project</th><th>Supervisor</th><th>Attempts</th><th>Baseline</th></tr></thead>
+              <tbody id="case-table"></tbody>
+            </table>
+          </div>
+          <aside class="evidence-panel" id="evidence-panel" aria-live="polite">
+            <span class="kicker">Selected incident</span>
+            <h3 id="detail-title">Choose a case</h3>
+            <p id="detail-description">Select any row to inspect its verification path.</p>
+            <ol class="trace" id="detail-trace"></ol>
+            <div class="detail-grid" id="detail-grid"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section method shell" id="method">
+        <div>
+          <span class="kicker">Evaluation contract</span>
+          <h2>What “verified” means here.</h2>
+        </div>
+        <ol class="method-steps">
+          <li><span>01</span><div><strong>Observe a real failure</strong><p>The selected pytest suite must execute and report at least one failing node ID.</p></div></li>
+          <li><span>02</span><div><strong>Reproduce before editing</strong><p>The same node IDs must fail again on an untouched copy of the repository.</p></div></li>
+          <li><span>03</span><div><strong>Verify the candidate</strong><p>Formerly failing tests pass and the selected regression suite retains every test identity.</p></div></li>
+          <li><span>04</span><div><strong>Escalate uncertainty</strong><p>Two failed candidates stop safely with logs, diffs, and reasons for a human reviewer.</p></div></li>
+        </ol>
+        <div class="disclosure">
+          <strong>Read this result correctly.</strong>
+          <p>The repair candidates in this benchmark are scripted fixtures. The comparison measures the value of reproduction, verification feedback, bounded retries, and escalation. It is not a claim about any language model’s repair accuracy. LLM cost is therefore $0 for both systems.</p>
+        </div>
+      </section>
+    </main>
+
+    <div class="demo-overlay" id="demo-overlay" hidden>
+      <div class="demo-modal" role="dialog" aria-modal="true" aria-labelledby="demo-title">
+        <button class="close-demo" id="close-demo" aria-label="Close evidence trace">×</button>
+        <span class="eyebrow"><span class="pulse"></span> Incident PP-008 · Live trace</span>
+        <h2 id="demo-title">A failed candidate becomes useful evidence.</h2>
+        <div class="demo-stage" id="demo-stage"></div>
+        <div class="demo-progress"><span id="demo-progress"></span></div>
+      </div>
+    </div>
+
+    <footer class="shell">
+      <span>ProofPatch · Evidence before confidence.</span>
+      <span id="generated-at">Loading benchmark snapshot…</span>
+    </footer>
+    <script src="app.js" defer></script>
+  </body>
+</html>

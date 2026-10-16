@@ -222,7 +222,7 @@ class Workflow:
         if self.tool_factory:
             self.context["ci"] = self.runner.get_ci_logs()
         if len(json.dumps(self.context)) > 100_000:
-            raise ValueError("Repository context exceeds Week 1's 100 KB model input limit")
+            raise ValueError("Repository context exceeds the 100 KB model input limit")
         self.phase = "investigator"
         return {"next": "supervisor"}
 

@@ -1,86 +1,66 @@
 # ProofPatch
 
 [![Evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml)
+[![Benchmark](https://github.com/Aahil19/ProofPatch/actions/workflows/benchmark.yml/badge.svg)](https://github.com/Aahil19/ProofPatch/actions/workflows/benchmark.yml)
+[![Dashboard](https://github.com/Aahil19/ProofPatch/actions/workflows/pages.yml/badge.svg)](https://aahil19.github.io/ProofPatch/)
 
-**AI that must show its work before calling a fix verified.**
+**An evidence-driven multi-agent system for debugging and repairing Python test failures.**
 
-ProofPatch is a Week 3 prototype for repairing small Python repositories with failing
-pytest tests. A LangGraph supervisor routes work through a reproducer, investigator,
-repair agent, and deterministic verifier. It produces a reviewable patch and evidence
-bundle while leaving the input repository untouched.
+ProofPatch routes an incident through a supervisor, reproducer, investigator, repair agent,
+and deterministic verifier. It cannot label a patch verified unless the original failure is
+reproduced, the formerly failing tests pass, and the selected regression suite retains every
+test identity. Uncertain incidents stop with an evidence bundle for a human reviewer.
 
-> Status: Week 3 implementation. The bundled demo uses scripted agent responses and
-> real pytest execution. It demonstrates the reliability pipeline, **not** an LLM repair
-> success rate. The OpenAI provider is implemented; live model quality requires a separate
-> credentialed run. GitHub Actions URL ingestion, a restricted MCP server, and Docker
-> execution, priced budget caps, checkpoint recovery, human review gates, and MLflow
-> tracing are implemented. A dashboard and benchmark remain planned.
+[Explore the evaluation dashboard](https://aahil19.github.io/ProofPatch/) ·
+[Watch the 12-second evidence trace](docs/proofpatch-demo.mp4) ·
+[Read the evaluation report](docs/evaluation.md) ·
+[Run an investigation on GitHub](https://github.com/Aahil19/ProofPatch/actions/workflows/investigate.yml)
 
-## Guardrails and review
+## Measured results
 
-Live runs require the selected model's input/output USD rates per million tokens and
-default to a **$0.50 estimated cost cap**. Model calls reserve their allowed output
-before execution; failed or interrupted calls still consume a reservation. Two transient
-retries, a 12-call ceiling, a 600-second active deadline, and evidence checks stop unsafe
-or uncertain runs. A SQLite checkpoint can resume an interrupted incident without
-repeating completed graph stages. Each CLI run writes JSON audit logs and MLflow agent
-spans. [Week 3 controls and recovery details](docs/week-3.md).
+The committed benchmark contains 30 deterministic, single-fault scenarios across three
+small Python repositories. Every score comes from real pytest executions.
 
-A verified patch remains pending human review. After inspecting `verified.patch` and the
-test report, use [Review a verified patch (manual)](https://github.com/Aahil19/ProofPatch/actions/workflows/review-patch.yml)
-with the successful investigation run ID. The review artifact records the GitHub actor
-and creates `approved.patch` only on approval. Local operators can run
-`proofpatch approve OUTPUT --actor NAME` or
-`proofpatch reject OUTPUT --actor NAME --reason TEXT`.
+| System | Verified | Escalated | Verified rate | Reproduction coverage | False verified |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ProofPatch supervisor | 27 / 30 | 3 | **90%** | 100% | 0 |
+| Single-attempt baseline | 21 / 30 | 9 | 70% | — | 0 |
 
-## Paste a GitHub Actions run URL
-
-Open [Actions → Investigate GitHub failure](https://github.com/Aahil19/ProofPatch/actions/workflows/investigate.yml),
-choose **Run workflow**, and paste a completed failed run URL. Set the project's subdirectory
-(usually `.`), choose `openai`, and supply your model ID and current input/output token
-prices. Add `OPENAI_API_KEY` as a repository
-Actions secret first. The workflow builds the trusted runner image and uploads the decision,
-GitHub provenance, test evidence, tool audit, and proposed patch.
-
-For the bundled fixture, select `demo` and `examples/buggy_stats`; no API key is needed.
-[Week 3's guarded investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38831728400)
-shows the verified result with human approval pending, and its
-[five-job CI run](https://github.com/Aahil19/ProofPatch/actions/runs/38831670262)
-includes real Docker/MCP and guardrail-injection checks.
-[See a completed URL investigation](https://github.com/Aahil19/ProofPatch/actions/runs/38663779004):
-five reproduced failures became five passing focused tests, with all nine regression tests
-passing in Docker through MCP. [The original failed run](https://github.com/Aahil19/ProofPatch/actions/runs/38661748932)
-is available to paste into the workflow and repeat the demonstration.
-
-[Seeded failure (intentional)](https://github.com/Aahil19/ProofPatch/actions/workflows/seeded-failure.yml)
-creates a real failed run and automatically triggers its investigation. That workflow is
-supposed to be red; the evidence checks should be green.
-
-From a machine with Docker running:
+The repair candidates are scripted fixtures. This benchmark isolates the effect of
+reproduction, verification feedback, a bounded second attempt, and safe escalation; it is
+**not** a language-model repair-accuracy claim. Both evaluated systems have $0 LLM cost.
+See [methodology, per-case results, and limitations](docs/evaluation.md).
 
 ```bash
-python -m pip install -c requirements.lock -e '.[dev]'
-docker build -t proofpatch-runner:0.2 docker
-# Set GITHUB_TOKEN with read access to Actions and repository contents when required.
-# Live mode also requires OPENAI_API_KEY.
-proofpatch https://github.com/OWNER/REPO/actions/runs/RUN_ID \
-  --provider openai --model YOUR_MODEL_ID \
-  --input-price-per-million INPUT_USD --output-price-per-million OUTPUT_USD --subdir .
+python scripts/run_benchmark.py --output benchmarks/results.json
 ```
 
-URL investigations always use **MCP → Docker**. They download the recorded commit SHA,
-pin the workflow attempt, fetch failed-job logs, and require reproduced failures to match
-pytest failure IDs in those logs. There is no automatic fallback to host execution.
-See [Week 2 setup, tool contracts, and limitations](docs/week-2.md).
+## How an incident moves through the system
 
-## Try it
+```mermaid
+flowchart TD
+    CI["GitHub CI failure<br/>logs · repository · commit SHA"] --> S
+    CLI["Local repository"] --> S
+    S["Supervisor<br/>LangGraph orchestration"]
+    S --> R["Reproducer<br/>confirm failing node IDs"]
+    R --> I["Investigator<br/>locate the defect"]
+    I --> P["Repair agent<br/>propose minimal source edit"]
+    P --> V["Verifier<br/>focused tests · regression suite · diff checks"]
+    V --> G{"Evidence sufficient?"}
+    G -->|"yes"| H["Review-ready patch<br/>human approval pending"]
+    G -->|"retry available"| P
+    G -->|"no"| E["Escalate with evidence"]
+    M["Restricted MCP tools"] --- S
+    D["Disposable Docker execution"] --- M
+    C["Budget · retries · deadline · checkpoints · audit · MLflow"] --- S
+```
 
-**Entirely on GitHub:** open [Actions → Evidence checks](https://github.com/Aahil19/ProofPatch/actions/workflows/ci.yml),
-choose **Run workflow**, then open the run summary. Download the evidence artifact for
-any Python version to inspect the before/after logs and verified patch. Ordinary pushes
-and pull requests also run this demo automatically.
+The graph executes **reproduce → investigate → repair → verify**. Supervisor decisions are
+explicit LangGraph transitions. Reproduction and verification are deterministic; only the
+investigator and repair roles use the selected provider. An unsuccessful candidate is never
+stacked onto the next one: each attempt starts from the exact failing snapshot.
 
-**Locally:**
+## Run it locally
 
 Python 3.11–3.13 on Linux or macOS:
 
@@ -91,133 +71,92 @@ python -m pip install -c requirements.lock -e '.[dev]'
 proofpatch examples/buggy_stats --provider demo --trusted-local
 ```
 
-To use the same fixture with real MCP transport and Docker locally:
+The bundled fixture begins with five failing and four passing tests. The scripted provider
+proposes a three-defect source patch; ProofPatch then requires all five focused tests and all
+nine regression tests to pass. The input checkout remains unchanged and a fresh
+`artifacts/<incident>/` evidence directory is created.
+
+For Docker-isolated execution through the MCP boundary:
 
 ```bash
 docker build -t proofpatch-runner:0.2 docker
 proofpatch examples/buggy_stats --provider demo --execution docker
 ```
 
-The demo starts with **5 failed / 4 passed** tests across three seeded bugs. It reproduces
-the five failures, proposes a source-only patch, then requires **5/5 focused tests** and
-**9/9 regression tests** to pass. Each invocation creates a fresh `artifacts/<id>/` folder.
+## Investigate a GitHub Actions failure
 
-```text
-ProofPatch — VERIFIED
-Reproduced failures passed; selected regression suite retained all tests.
-Report: .../artifacts/<id>/report.md
-```
+Open [Investigate GitHub failure](https://github.com/Aahil19/ProofPatch/actions/workflows/investigate.yml),
+choose **Run workflow**, and paste a completed failed Actions run URL. Demo mode needs no
+secret. Live mode requires an `OPENAI_API_KEY` Actions secret, an explicit model ID, and the
+model's current input/output prices so the budget control can reserve real dollars.
 
-Read `report.md`, inspect `verified.patch`, and open the stage logs and JSON evidence.
-The deliberately broken example stays broken so the demonstration can be repeated.
-
-## Live investigation and repair
-
-To try a real model **on GitHub**, add `OPENAI_API_KEY` as a repository Actions secret
-under **Settings → Secrets and variables → Actions**. Then open
-[Actions → Live model demo (manual)](https://github.com/Aahil19/ProofPatch/actions/workflows/live-demo.yml),
-choose **Run workflow**, and enter your model ID and token prices. This uses your API credits, runs against
-the bundled fixture, and uploads its evidence even when the incident escalates. It never
-runs automatically and does not use the scripted demo provider. The default
-operator-priced budget cap is $0.50. Never paste the key into an issue, source file, or workflow input.
-
-For a local live run:
-
-Install the target project's dependencies in the same environment first. Use an explicit
-model ID supported by your OpenAI account and structured outputs:
+From a machine with Docker running:
 
 ```bash
-export OPENAI_API_KEY='your-key'  # Prefer your secret manager; never commit a key.
-proofpatch /path/to/trusted/python-project \
+proofpatch https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   --provider openai --model YOUR_MODEL_ID \
-  --input-price-per-million INPUT_USD --output-price-per-million OUTPUT_USD \
-  --tests tests --trusted-local --output /path/outside/project/incident-001
+  --input-price-per-million INPUT_USD \
+  --output-price-per-million OUTPUT_USD \
+  --subdir .
 ```
 
-Live mode sends Python source, Python tests, and failure log excerpts to OpenAI. Review
-the repository for sensitive content first. `.env`, key files, common build folders, and
-hidden directories are excluded from the copied workspace. This is not a comprehensive
-secret scanner. API credentials are excluded from the test subprocess environment.
+URL investigations use **MCP → Docker** without a host-execution fallback. ProofPatch pins
+the recorded commit and workflow attempt, retrieves failed-job logs, and requires locally
+reproduced pytest failures to match IDs found in the CI evidence. The restricted MCP server
+exposes only `get_ci_logs`, `read_file`, `run_tests`, and `get_diff`.
 
-The investigator returns a structured diagnosis. A separate repair call receives that
-diagnosis, source, and evidence, and returns exact-match edits. Only pytest results can
-set the incident to `verified`; a model cannot set that status.
+A complete public example is available in the
+[guarded investigation run](https://github.com/Aahil19/ProofPatch/actions/runs/38831728400).
+It records five reproduced failures, five focused passes, nine regression passes, and a
+review-ready patch with approval still pending.
 
-## Architecture
+## Evidence contract
 
-The system follows a supervisor-and-specialists architecture: failure context enters the
-orchestrator, focused agents gather evidence and propose a patch, and verification gates
-the handoff to a human. Shared controls apply to each step.
+“Verified” means all of the following are true:
 
-```mermaid
-flowchart TD
-    CI["GitHub CI failure: logs, repository, commit SHA"] --> S
-    CLI["CLI: repository or Actions run URL"] --> S
-    S["Supervisor: LangGraph orchestration"]
-    S --> I["Investigator: locate the failure"]
-    S --> R["Reproducer: rerun failing tests"]
-    S --> P["Repair agent: propose a minimal patch"]
-    S --- M["Restricted MCP tools: logs, file reads, tests, diff"]
-    M --- D["Disposable Docker test containers"]
-    I --> V
-    R --> V
-    P --> V
-    V["Verification: tests, diff constraints, integrity checks"] --> G{"Evidence sufficient and checks pass?"}
-    G -->|Yes| H["Review-ready patch and evidence: human review"]
-    G -->|No: retry available| S
-    G -->|No: blocked or attempts exhausted| E["Escalate to human with failure evidence"]
-    H --> A["Human review gate: approved patch artifact"]
-    C["Shared controls: cost, retries, deadlines, checkpoints, audit, MLflow"] --- S
-```
+1. The selected baseline suite executed and contained a failing test call.
+2. The same failing node IDs failed again before any source edit.
+3. Every formerly failing test passed after the candidate patch; skips do not count.
+4. The selected regression suite exited cleanly with exactly the same test identities.
+5. Tests, configuration, and protected files were unchanged.
+6. Test execution did not mutate the copied repository.
 
-The branches describe responsibilities, not concurrent execution. The graph runs
-**reproduce → investigate → repair → verify**, returning to the supervisor between steps.
-Reproduction comes first so model calls receive observed failures rather than an assumption.
-The supervisor, reproducer, and verifier are deterministic nodes. The investigator and
-repair agent have distinct model roles.
-Unsuccessful verification can route back to repair, with concrete failure feedback and a
-fresh copy of the original source; at most two repair attempts are allowed.
+Collection errors, flaky reproduction, missing evidence, timeouts, malformed provider output,
+invalid patches, exhausted attempts, and budget failures all escalate. Verification is scoped
+to the selected tests and execution environment; it is not a proof of general correctness.
 
-See [the architecture and implementation mapping](docs/architecture.md) for component
-boundaries and the human handoff. Passing the gate means the selected
-checks passed; it is not a blanket declaration that a patch is safe.
+## Guardrails and observability
 
-## What “verified” means
+- **Cost:** $0.50 default incident cap with pre-call reservations and operator-supplied rates.
+- **Loops:** 12 model calls, two repair attempts, and 4,096 output tokens per call at most.
+- **Failures:** two transient retries with exponential backoff and a 600-second incident deadline.
+- **Recovery:** SQLite checkpoints resume interrupted graph stages without repeating completed work.
+- **Approval:** a verified patch remains pending until an explicit reviewer decision creates `approved.patch`.
+- **Isolation:** GitHub URL runs execute as a non-root user in a network-disabled disposable container.
+- **Audit:** JSONL transitions, tool calls, duration, token/cost data, plus optional MLflow spans.
+- **Failure injection:** CI exercises budget exhaustion, MCP unavailability, and deadline handling.
 
-All of the following must hold:
-
-1. The selected baseline suite actually executes and contains failing test calls.
-2. The same failing node IDs fail again before any patch is applied.
-3. Every originally failing test passes after the patch (a skip does not count).
-4. The selected full regression suite exits cleanly and retains exactly the same test IDs.
-5. Every originally passed or failed test passes; previously skipped tests may remain skipped.
-6. Tests, configuration, and other protected files are unchanged; test execution did not
-   mutate the copied repository.
-
-Collection errors, missing evidence, empty suites, flaky reproduction, timeouts, provider
-errors, invalid patches, and exhausted attempts escalate. “Verified” is scoped to the
-selected tests and environment; it is not a proof of general correctness.
+See [reliability controls](docs/reliability.md), [integration boundaries](docs/integrations.md),
+and [the evidence model](docs/evidence-model.md).
 
 ## Evidence bundle
 
 | File | Purpose |
 | --- | --- |
-| `report.md` / `report.json` | Decision, reason, diagnosis, test identities, source hashes, usage |
-| `trace.jsonl` | Every agent transition, timestamp, duration, and error |
-| `llm-calls.jsonl` / `checkpoints.sqlite` | Model attempt costs and durable restart state |
-| `mcp-tools.jsonl` / `mlruns/` | Tool audit and MLflow agent spans |
-| `baseline.*` / `reproduction.*` | Before-patch test outcomes and logs |
-| `proposal-N.json` / `attempt-N.patch` | Rationale, exact edits, proposed diff for every attempt |
-| `attempt-N-focused.*` / `attempt-N-regression.*` | After-patch outcomes and logs |
-| `verified.patch` | Created only after all verification gates pass |
-| `approved.patch` / `approval-events.jsonl` | Created only after explicit approval / reviewer decision log |
+| `report.md` / `report.json` | Decision, reason, diagnosis, provenance, test IDs, usage, approval state |
+| `trace.jsonl` | Every graph transition, duration, route, and error |
+| `baseline.*` / `reproduction.*` | Before-patch outcomes and logs |
+| `proposal-N.json` / `attempt-N.patch` | Every repair rationale, exact edit, and diff |
+| `attempt-N-focused.*` | Outcomes for the formerly failing test IDs |
+| `attempt-N-regression.*` | Outcomes for the selected full suite |
+| `verified.patch` | Created only after every evidence gate passes |
+| `approved.patch` / `approval-events.jsonl` | Created only by the explicit review gate |
+| `llm-calls.jsonl` / `mcp-tools.jsonl` / `mlruns/` | Model, tool, cost, and trace telemetry |
 
-Existing evidence directories are never overwritten except through validated `--resume`.
-Exit codes: `0` verified, `1`
-escalated, `2` invalid CLI/configuration. Proposed patches are never automatically applied
-to your original checkout, committed, pushed, or submitted as pull requests.
+ProofPatch never modifies the input checkout, opens a pull request, or merges a patch. Existing
+evidence directories are not overwritten except through validated checkpoint resume.
 
-## Run the checks
+## Development
 
 ```bash
 ruff check .
@@ -226,39 +165,34 @@ pytest -q
 python scripts/check_demo.py --output artifacts/ci-demo
 python scripts/check_escalation.py --output artifacts/ci-escalation
 python scripts/check_guardrails.py
+python scripts/run_benchmark.py --output artifacts/benchmark-results.json
 ```
 
-GitHub Actions runs these checks on Python 3.11, 3.12, and 3.13, then uploads the actual
-demo evidence as a workflow artifact. No API key is needed for CI. See
-[the Week 1 acceptance checklist](docs/week-1.md) for scope and limitations.
+GitHub Actions runs the core suite on Python 3.11, 3.12, and 3.13, executes real Docker/MCP
+integration checks, injects guardrail failures, runs all 30 benchmark incidents, and publishes
+the dashboard to GitHub Pages. Full per-incident evidence is uploaded as a workflow artifact.
 
-## Boundaries and roadmap
+## Security boundary
 
-**Week 1 is trusted-local execution only.** A disposable directory and a subprocess are
-not a sandbox. Target tests and proposed Python patches execute with your OS permissions;
-do not run this prototype on unknown repositories. The local runner is POSIX-only, has a
-per-command timeout, kills its process group on timeout, and disables automatic pytest
-plugin loading. Projects requiring external pytest plugins, editable package installation,
-services, or special environment variables need further runner support.
+Trusted-local mode launches a subprocess with your operating-system permissions. Use it only
+for reviewed repositories. GitHub URL and `--execution docker` runs use a read-only source
+mount, no network, a non-root user, dropped capabilities, `no-new-privileges`, and CPU,
+memory, process, and temporary-filesystem limits. Containers reduce exposure but are not a
+complete defense against hostile code or a compromised Docker host; use a disposable runner
+for untrusted repositories.
 
-For URL ingestion and `--execution docker`, tests run in restricted disposable containers:
-no network, non-root user, read-only root/source/support mounts, dropped capabilities,
-no-new-privileges, and CPU/memory/PID/tmpfs limits. The Docker socket and API credentials
-are never mounted or passed into the test container. Container isolation is not a complete
-defense against hostile code or a compromised Docker host; use a disposable runner for
-untrusted repositories. The default image contains Python and pytest only; build a reviewed
-custom image with additional dependencies when necessary.
+The default container intentionally contains only Python and pytest. Projects that need extra
+dependencies require a reviewed custom image. Live mode sends selected Python source, tests,
+and failure-log excerpts to the configured model provider after excluding common key files,
+hidden directories, and build outputs; this is not a comprehensive secret scanner.
 
-The prototype caps live calls at 12, output tokens at 4,096 per call, repair attempts at 2,
-model input context at 100 KB, and operator-priced estimated cost at $0.50 by default.
-Transient failures have at most two application retries; the OpenAI SDK's own retries are
-disabled. The budget estimate depends on the supplied rates and returned token usage.
+## Documentation
 
-- Week 2 implemented: restricted Docker execution, four MCP tools, GitHub Actions failure ingestion.
-- Week 3 implemented: priced budget reservations, transient retries, checkpoint recovery,
-  patch artifact approval, MLflow tracing, and failure injection. PR creation is still manual.
-- Week 4: 30+ unseen seeded cases, single-agent baseline comparison, dashboard, demo video,
-  and an honest evaluation report. No 70% repair-rate claim is made today.
+- [Architecture and trust boundaries](docs/architecture.md)
+- [Evidence model and acceptance criteria](docs/evidence-model.md)
+- [GitHub, MCP, and Docker integrations](docs/integrations.md)
+- [Guardrails, recovery, approval, and tracing](docs/reliability.md)
+- [Benchmark methodology and findings](docs/evaluation.md)
 
 ## Implementation references
 

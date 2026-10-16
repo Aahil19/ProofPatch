@@ -1,0 +1,76 @@
+name: Repair benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - 'scripts/run_benchmark.py'
+      - 'scripts/check_benchmark_snapshot.py'
+      - 'src/**'
+      - 'requirements.lock'
+      - 'pyproject.toml'
+      - '.github/workflows/benchmark.yml'
+  pull_request:
+    paths:
+      - 'benchmarks/**'
+      - 'scripts/run_benchmark.py'
+      - 'scripts/check_benchmark_snapshot.py'
+      - 'src/**'
+      - 'requirements.lock'
+      - 'pyproject.toml'
+      - '.github/workflows/benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: python -m pip install -c requirements.lock -e '.[dev]'
+      - name: Run all seeded incidents
+        run: >-
+          python scripts/run_benchmark.py
+          --output artifacts/benchmark-results.json
+          --evidence-dir artifacts/benchmark/evidence
+      - name: Check outcome snapshot
+        run: python scripts/check_benchmark_snapshot.py benchmarks/results.json artifacts/benchmark-results.json
+      - name: Write job summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = Path('artifacts/benchmark-results.json')
+          if result.exists():
+              data = json.loads(result.read_text())
+              s, b = data['summary']['supervisor'], data['summary']['single_agent']
+              text = (
+                  '# ProofPatch repair benchmark\n\n'
+                  f"- Supervisor: **{s['verified']}/{data['summary']['scenarios']} verified ({s['verified_rate']:.0%})**\n"
+                  f"- Single-attempt baseline: **{b['verified']}/{data['summary']['scenarios']} verified ({b['verified_rate']:.0%})**\n"
+                  f"- Reproduction coverage: **{data['summary']['reproduction_coverage']:.0%}**\n"
+                  f"- False verified: **{data['summary']['false_verified']}**\n\n"
+                  'Repair candidates are scripted fixtures; this measures orchestration, not model quality.\n'
+              )
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
+                  stream.write(text)
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: proofpatch-benchmark
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

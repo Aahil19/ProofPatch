@@ -65,7 +65,7 @@ def main(argv=None) -> int:
         parser.error("GitHub run investigations require Docker; local fallback is forbidden")
     if execution == "local" and not args.trusted_local:
         parser.error(
-            "Week 1 executes code locally. Review the repository and pass --trusted-local."
+            "Local mode executes repository code on this machine. Review it and pass --trusted-local."
         )
     if args.timeout <= 0 or args.timeout > 600:
         parser.error("--timeout must be greater than zero and at most 600 seconds")

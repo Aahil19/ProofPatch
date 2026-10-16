@@ -1,4 +1,4 @@
-"""Produce reviewable Week 3 failure-injection evidence without an API key or Docker."""
+"""Produce reviewable guardrail-injection evidence without an API key or Docker."""
 
 import json
 from pathlib import Path

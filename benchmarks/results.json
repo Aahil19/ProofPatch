@@ -1,0 +1,941 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-16T01:38:55.051187+00:00",
+  "environment": {
+    "python": "3.11.0",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "execution": "trusted-local subprocess"
+  },
+  "methodology": {
+    "corpus": "30 deterministic single-fault scenarios across three Python projects",
+    "repair_candidates": "Scripted fixtures; this measures orchestration, not model quality",
+    "verified_definition": "failure reproduced, failing test passes, full selected suite passes with unchanged test identities",
+    "single_agent": "one candidate and no verification-informed retry",
+    "supervisor": "reproduction, specialist trace, up to two candidates, deterministic verification"
+  },
+  "summary": {
+    "scenarios": 30,
+    "projects": 3,
+    "supervisor": {
+      "verified": 27,
+      "escalated": 3,
+      "verified_rate": 0.9,
+      "median_latency_ms": 766,
+      "p95_latency_ms": 1145,
+      "llm_cost_usd": 0
+    },
+    "single_agent": {
+      "verified": 21,
+      "escalated": 9,
+      "verified_rate": 0.7,
+      "median_latency_ms": 556,
+      "p95_latency_ms": 564,
+      "llm_cost_usd": 0
+    },
+    "reproduction_coverage": 1.0,
+    "trace_coverage": 1.0,
+    "false_verified": 0
+  },
+  "cases": [
+    {
+      "id": "textops-01-normalize_space",
+      "project": "textops",
+      "category": "normalization",
+      "description": "Collapses mixed whitespace.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_normalize_space",
+      "correct": "return \" \".join(value.split())",
+      "buggy": "return \"  \".join(value.split())",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 766,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 552,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-02-slugify",
+      "project": "textops",
+      "category": "parsing",
+      "description": "Removes both boundary separators.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_slugify",
+      "correct": "return cleaned.strip(\"-\")",
+      "buggy": "return cleaned.lstrip(\"-\")",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 754,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 554,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-03-truncate",
+      "project": "textops",
+      "category": "boundary",
+      "description": "Reserves one character for the ellipsis.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_truncate",
+      "correct": "return value[: max(0, limit - 1)] + \"\u2026\"",
+      "buggy": "return value[:limit] + \"\u2026\"",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 773,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 557,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-04-initials",
+      "project": "textops",
+      "category": "formatting",
+      "description": "Uppercases generated initials.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_initials",
+      "correct": "return \"\".join(part[0].upper() for part in name.split() if part)",
+      "buggy": "return \"\".join(part[0].lower() for part in name.split() if part)",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 779,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 566,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-05-word_count",
+      "project": "textops",
+      "category": "parsing",
+      "description": "Counts words across arbitrary whitespace.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_word_count",
+      "correct": "return len(value.split())",
+      "buggy": "return len(value.split(\" \"))",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 762,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 557,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-06-is_palindrome",
+      "project": "textops",
+      "category": "comparison",
+      "description": "Compares normalized text with its reverse.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_is_palindrome",
+      "correct": "return normalized == normalized[::-1]",
+      "buggy": "return normalized == value",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 759,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 554,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-07-common_prefix",
+      "project": "textops",
+      "category": "iteration",
+      "description": "Shrinks a prefix from its right edge.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_common_prefix",
+      "correct": "prefix = prefix[:-1]",
+      "buggy": "prefix = prefix[1:]",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 769,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 556,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "textops-08-mask_email",
+      "project": "textops",
+      "category": "privacy",
+      "description": "Masks every local-part character after the first.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_mask_email",
+      "correct": "return f\"{visible}{'*' * max(1, len(local) - 1)}@{domain}\"",
+      "buggy": "return f\"{visible}{'*' * max(1, len(local) - 2)}@{domain}\"",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1142,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 553,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "textops-09-wrap_words",
+      "project": "textops",
+      "category": "slicing",
+      "description": "Starts chunking at the first word.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_wrap_words",
+      "correct": "return [words[index : index + width] for index in range(0, len(words), width)]",
+      "buggy": "return [words[index : index + width] for index in range(1, len(words), width)]",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1130,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 550,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "textops-10-parse_bool",
+      "project": "textops",
+      "category": "input validation",
+      "description": "Recognizes the documented true literals.",
+      "file": "textops.py",
+      "test": "tests/test_textops.py::test_parse_bool",
+      "correct": "if normalized in {\"true\", \"1\", \"yes\", \"on\"}:",
+      "buggy": "if normalized in {\"true\", \"1\", \"on\"}:",
+      "candidates": 2,
+      "expected": "escalated",
+      "supervisor": {
+        "status": "escalated",
+        "attempts": 2,
+        "duration_ms": 1132,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 9,
+        "trace_steps": 13,
+        "reason": "Repair attempts exhausted: Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 554,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "dataops-01-mean",
+      "project": "dataops",
+      "category": "arithmetic",
+      "description": "Uses the number of values as the denominator.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_mean",
+      "correct": "return sum(values) / len(values)",
+      "buggy": "return sum(values) / (len(values) + 1)",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 763,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 554,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-02-median",
+      "project": "dataops",
+      "category": "statistics",
+      "description": "Averages the two middle values for even input.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_median",
+      "correct": "if len(ordered) % 2 == 0:\n        return (ordered[middle - 1] + ordered[middle]) / 2",
+      "buggy": "if len(ordered) % 2 == 0:\n        return ordered[middle]",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 759,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 548,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-03-clamp",
+      "project": "dataops",
+      "category": "boundary",
+      "description": "Clamps low values to the lower bound.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_clamp",
+      "correct": "return min(upper, max(lower, value))",
+      "buggy": "return max(upper, min(lower, value))",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 755,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 559,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-04-moving_average",
+      "project": "dataops",
+      "category": "statistics",
+      "description": "Divides each window by its width.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_moving_average",
+      "correct": "return [sum(values[index : index + width]) / width for index in range(len(values) - width + 1)]",
+      "buggy": "return [sum(values[index : index + width]) / (width + 1) for index in range(len(values) - width + 1)]",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 763,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 553,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-05-unique_preserving",
+      "project": "dataops",
+      "category": "ordering",
+      "description": "Deduplicates without sorting the input.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_unique_preserving",
+      "correct": "return list(dict.fromkeys(values))",
+      "buggy": "return sorted(set(values))",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 766,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 559,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-06-chunk",
+      "project": "dataops",
+      "category": "slicing",
+      "description": "Advances by exactly one chunk size.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_chunk",
+      "correct": "return [values[index : index + size] for index in range(0, len(values), size)]",
+      "buggy": "return [values[index : index + size] for index in range(0, len(values), size + 1)]",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 750,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 553,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-07-flatten",
+      "project": "dataops",
+      "category": "iteration",
+      "description": "Preserves group order while flattening.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_flatten",
+      "correct": "return [item for group in values for item in group]",
+      "buggy": "return [item for group in reversed(values) for item in group]",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 766,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 560,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "dataops-08-normalize_minmax",
+      "project": "dataops",
+      "category": "normalization",
+      "description": "Uses the data range as the scale.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_normalize_minmax",
+      "correct": "return [(value - low) / (high - low) for value in values]",
+      "buggy": "return [(value - low) / high for value in values]",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1140,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 556,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "dataops-09-sum_by_key",
+      "project": "dataops",
+      "category": "aggregation",
+      "description": "Ignores rows that do not contain the key.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_sum_by_key",
+      "correct": "return sum(row[key] for row in rows if key in row)",
+      "buggy": "return sum(row[key] for row in rows if key not in row)",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1148,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 558,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "dataops-10-transpose",
+      "project": "dataops",
+      "category": "matrix",
+      "description": "Transposes rows into columns in source order.",
+      "file": "dataops.py",
+      "test": "tests/test_dataops.py::test_transpose",
+      "correct": "return [list(column) for column in zip(*matrix, strict=True)]",
+      "buggy": "return [list(column) for column in zip(matrix, strict=True)]",
+      "candidates": 2,
+      "expected": "escalated",
+      "supervisor": {
+        "status": "escalated",
+        "attempts": 2,
+        "duration_ms": 1143,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 9,
+        "trace_steps": 13,
+        "reason": "Repair attempts exhausted: Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 560,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "apiops-01-is_success",
+      "project": "apiops",
+      "category": "HTTP semantics",
+      "description": "Treats only 2xx status codes as success.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_is_success",
+      "correct": "return 200 <= status < 300",
+      "buggy": "return 200 <= status <= 300",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 767,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 563,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-02-retry_delay",
+      "project": "apiops",
+      "category": "backoff",
+      "description": "Uses the configured zero-based retry exponent.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_retry_delay",
+      "correct": "return base * (2**attempt)",
+      "buggy": "return base * (2 ** (attempt - 1))",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 765,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 555,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-03-extract_items",
+      "project": "apiops",
+      "category": "response parsing",
+      "description": "Reads items from the nested data envelope.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_extract_items",
+      "correct": "return payload.get(\"data\", {}).get(\"items\", [])",
+      "buggy": "return payload.get(\"items\", [])",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 754,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 561,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-04-normalize_headers",
+      "project": "apiops",
+      "category": "HTTP semantics",
+      "description": "Normalizes header names case-insensitively.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_normalize_headers",
+      "correct": "return {key.lower(): value.strip() for key, value in headers.items()}",
+      "buggy": "return {key: value.strip() for key, value in headers.items()}",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 764,
+        "baseline_failures": 3,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 553,
+        "focused_passes": 3,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-05-build_query",
+      "project": "apiops",
+      "category": "encoding",
+      "description": "Sorts query parameters for stable output.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_build_query",
+      "correct": "return urlencode(sorted(params.items()))",
+      "buggy": "return urlencode(params)",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 765,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 557,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-06-paginate_offset",
+      "project": "apiops",
+      "category": "pagination",
+      "description": "Converts one-based pages to a zero-based offset.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_paginate_offset",
+      "correct": "return (page - 1) * per_page",
+      "buggy": "return page * per_page",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 764,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 555,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-07-error_message",
+      "project": "apiops",
+      "category": "response parsing",
+      "description": "Reads the nested API error message.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_error_message",
+      "correct": "return error.get(\"message\") or \"Unknown API error\"",
+      "buggy": "return payload.get(\"message\") or \"Unknown API error\"",
+      "candidates": 1,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 769,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 9,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "verified",
+        "attempts": 1,
+        "duration_ms": 557,
+        "focused_passes": 1,
+        "regression_passes": 10,
+        "reason": "All evidence gates passed"
+      }
+    },
+    {
+      "id": "apiops-08-pick_etag",
+      "project": "apiops",
+      "category": "HTTP semantics",
+      "description": "Finds ETag after header normalization.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_pick_etag",
+      "correct": "return normalize_headers(headers).get(\"etag\")",
+      "buggy": "return normalize_headers(headers).get(\"ETag\")",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1125,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 558,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "apiops-09-timeout_budget",
+      "project": "apiops",
+      "category": "boundary",
+      "description": "Never returns a negative timeout budget.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_timeout_budget",
+      "correct": "return max(0.0, total - elapsed)",
+      "buggy": "return max(0.0, total + elapsed)",
+      "candidates": 2,
+      "expected": "verified",
+      "supervisor": {
+        "status": "verified",
+        "attempts": 2,
+        "duration_ms": 1134,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 10,
+        "trace_steps": 13,
+        "reason": "Reproduced failures passed; selected regression suite retained all tests."
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 561,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    },
+    {
+      "id": "apiops-10-rate_limit_remaining",
+      "project": "apiops",
+      "category": "HTTP semantics",
+      "description": "Reads the conventional rate-limit header.",
+      "file": "apiops.py",
+      "test": "tests/test_apiops.py::test_rate_limit_remaining",
+      "correct": "value = normalize_headers(headers).get(\"x-ratelimit-remaining\")",
+      "buggy": "value = normalize_headers(headers).get(\"x-rate-limit-remaining\")",
+      "candidates": 2,
+      "expected": "escalated",
+      "supervisor": {
+        "status": "escalated",
+        "attempts": 2,
+        "duration_ms": 1142,
+        "baseline_failures": 1,
+        "reproduced": true,
+        "regression_passes": 9,
+        "trace_steps": 13,
+        "reason": "Repair attempts exhausted: Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      },
+      "single_agent": {
+        "status": "escalated",
+        "attempts": 1,
+        "duration_ms": 545,
+        "focused_passes": 0,
+        "regression_passes": 9,
+        "reason": "Original failing tests did not all pass; A formerly failing test was skipped, absent, or still failing; Regression suite did not pass cleanly; A previously executed test no longer passes"
+      }
+    }
+  ]
+}

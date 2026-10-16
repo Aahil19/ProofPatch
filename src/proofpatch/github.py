@@ -141,7 +141,7 @@ class GitHub:
         if detail["repository"]["full_name"].lower() != run.repository.lower():
             raise ValueError("Workflow repository mismatch")
         if detail["head_repository"]["full_name"].lower() != run.repository.lower():
-            raise ValueError("Fork runs are not supported in Week 2")
+            raise ValueError("Fork-origin workflow runs are not supported")
         sha = detail["head_sha"]
         if not re.fullmatch(r"[a-fA-F0-9]{40}", sha):
             raise ValueError("Invalid GitHub commit SHA")

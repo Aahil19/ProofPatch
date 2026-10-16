@@ -37,7 +37,7 @@ def inventory(root: Path) -> dict[str, bytes]:
             content = path.read_bytes()
             total += len(content)
             if total > 10_000_000 or len(files) >= 1000:
-                raise ValueError("Week 1 supports repositories up to 1,000 files / 10 MB")
+                raise ValueError("Repositories are limited to 1,000 files / 10 MB")
             files[path.relative_to(root).as_posix()] = content
     return files
 
